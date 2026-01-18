@@ -6,13 +6,11 @@
 
 ## Get data package
 
-BOLD_Public.06-Sep-2024 as this is the one used to build BOLD-View:
-
-https://bench.boldsystems.org/index.php/datapackage?id=BOLD_Public.06-Sep-2024
+At the start I use BOLD_Public.06-Sep-2024 as this is the one used to build the BOLD-View app. Get the data from https://bench.boldsystems.org/index.php/datapackage?id=BOLD_Public.06-Sep-2024
 
 ## Load data into DuckDB
 
-Make a directory, start DuckDB with a database filename so it creates the database on disk.
+In this folder start DuckDB with a database filename so it creates the database on disk, then import from TSV, specifying the columns you want.
 
 ```
 cd ~/Develeopment
@@ -33,6 +31,10 @@ This reads the TSV file and creates the table `barcode`. Note that the `CREATE T
 
 We want data from various columns to clean, map to identifiers, or convert to other formats such as RDF.
 
+Note that BOLD uses the Barcode Core Data Model (BCDM) model, this model is discussed at [DNAdiversity/BCDM](https://github.com/DNAdiversity/BCDM), which also has a mapping between BCDM and Darwin Core.
+
+### Examples of export and/or analysis of columns
+
 #### identified_by (JSON)
 
 Names of people who identified specimens.
@@ -47,7 +49,7 @@ COPY (
 
 #### voucher_type (JSON)
 
-Types of voucher (notionally a set of predefined terms, but in practice free form)
+Types of voucher (notionally a set of predefined terms, but in practice lots of free-form entries).
 
 ```
 COPY (
@@ -86,5 +88,89 @@ COPY (
     WHERE insdc_acs IS NOT NULL
 ) TO 'insdc_acs.tsv' (FORMAT CSV, DELIMITER '\t', HEADER);
 ```
+
+#### Geocoordinates that are not country centroids
+
+BOLD has coordinates that are the country’s centroid, not the actual sample location. These can dramatically misplace the barcoded specimen (and invalidate any “ecoregion” they may be placed in).
+
+For the BOLD_Public.06-Sep-2024 data package:
+
+```
+SELECT COUNT(processid) FROM barcode WHERE coord_source = 'Coordinates from country centroid';
+┌──────────────────┐
+│ count(processid) │
+│      int64       │
+├──────────────────┤
+│      508146      │
+└──────────────────┘
+```
+
+Hence 0.5M geocoordinates are for the country, not the actual locality.
+
+To select geocoordinates that aren’t centroids, together with additional geographic information:
+
+```
+COPY (
+   SELECT processid, "country/ocean", country_iso, "province/state", region, sector, site, coord
+   FROM barcode
+   WHERE coord IS NOT NULL AND coord != 'None' AND coord_source != 'Coordinates from country centroid'
+) TO 'coord.tsv' (FORMAT CSV, DELIMITER '\t', HEADER);
+```
+
+#### Distinct coords
+
+Could use geohash as identifiers (e.g., https://geohash.softeng.co), also consider encoding using H3 (at a series of resolutions) https://h3geo.org/docs/comparisons/geohash/.
+
+```
+SELECT DISTINCT "country/ocean", country_iso, "province/state", region, sector, site, coord
+   FROM barcode
+   WHERE coord IS NOT NULL AND coord != 'None'
+      AND coord_source != 'Coordinates from country centroid';
+```
+
+#### Get localities for a country
+
+```
+SELECT processid, "country/ocean", country_iso, "province/state", region, sector, site, coord
+   FROM barcode
+   WHERE country_iso = 'AU';
+```
+
+
+#### Sampling methods
+
+```
+COPY (
+   SELECT DISTINCT sampling_protocol
+   FROM barcode
+   WHERE sampling_protocol IS NOT NULL AND sampling_protocol != 'None'
+) TO 'sampling_protocol.tsv' (FORMAT CSV, DELIMITER '\t', HEADER);
+```
+
+#### Vouchers, taxonomic notes, etc.
+
+
+```
+COPY (
+    SELECT processid, notes
+    FROM barcode
+    WHERE notes NOT NULL and notes != 'None'
+) TO 'notes.tsv' (FORMAT CSV, DELIMITER '\t', HEADER);
+```
+
+```
+COPY (
+    SELECT processid, taxonomy_notes
+    FROM barcode
+    WHERE taxonomy_notes NOT NULL and taxonomy_notes != 'None'
+) TO 'taxonomy_notes' (FORMAT CSV, DELIMITER '\t', HEADER);
+```
+
+COPY (
+    SELECT processid, voucher_type
+    FROM barcode
+    WHERE voucher_type NOT NULL and voucher_type != 'None'
+) TO 'voucher_type' (FORMAT CSV, DELIMITER '\t', HEADER);
+
 
 
