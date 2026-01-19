@@ -55,8 +55,20 @@ Types of voucher (notionally a set of predefined terms, but in practice lots of 
 COPY (
   SELECT DISTINCT voucher_type
   FROM barcode
-  WHERE identified_by IS NOT NULL
+  WHERE voucher_type IS NOT NULL
 ) TO 'voucher_type.json' (FORMAT JSON, ARRAY TRUE);
+```
+
+#### voucher_type (TSV)
+
+Types of voucher (notionally a set of predefined terms, but in practice lots of free-form entries).
+
+```
+COPY (
+  SELECT processid, voucher_type
+  FROM barcode
+  WHERE voucher_type LIKE '%type%'
+) TO 'voucher_type.tsv' (FORMAT CSV, DELIMITER '\t', HEADER);
 ```
 
 #### identification (TSV)
