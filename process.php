@@ -48,7 +48,10 @@ while (!feof($file_handle))
 			
 			if ($result->parsed)
 			{
-				echo $data->processid . ' ' . $result->type_status . "\n";
+				echo '<https://portal.boldsystems.org/record/' . $data->processid . '> ';
+				echo '<http://rs.tdwg.org/dwc/terms/typeStatus> ';
+				echo '<http://rs.gbif.org/vocabulary/gbif/type_status/' . $result->type_status . '> .';
+				echo "\n";
 			}
 
 			

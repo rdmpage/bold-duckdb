@@ -1,2 +1,6 @@
-bold.duckdb
 .DS_Store
+bold.duckdb
+/junk/
+
+*.tsv
+*.json

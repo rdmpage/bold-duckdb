@@ -178,11 +178,21 @@ COPY (
 ) TO 'taxonomy_notes' (FORMAT CSV, DELIMITER '\t', HEADER);
 ```
 
+```
 COPY (
     SELECT processid, voucher_type
     FROM barcode
     WHERE voucher_type NOT NULL and voucher_type != 'None'
 ) TO 'voucher_type' (FORMAT CSV, DELIMITER '\t', HEADER);
+```
 
+#### Taxonomy names at higher rank (e.g., for Phylopic)
 
+```
+COPY (
+    SELECT DISTINCT family
+    FROM barcode
+    WHERE family NOT NULL and family != 'None'
+) TO 'family' (FORMAT CSV, DELIMITER '\t', HEADER);
+```
 
